@@ -23,6 +23,7 @@ class SubmissionModel:
             'status': 'pending',  # pending | processing | evaluated | error
             'progress': 0,        # 0-100 percentage
             'progress_step': '',   # human-readable current step
+            'error_message': '',
             'submitted_at': datetime.now(timezone.utc),
             'evaluated_at': None,
             'manual_check': False,
@@ -44,6 +45,9 @@ class SubmissionModel:
                 'marks_obtained': marks_obtained,
                 'feedback': feedback,
                 'status': 'evaluated',
+                'progress': 100,
+                'progress_step': 'Evaluation complete',
+                'error_message': '',
                 'evaluated_at': datetime.now(timezone.utc),
             }}
         )
@@ -61,10 +65,13 @@ class SubmissionModel:
             }}
         )
 
-    def set_status(self, submission_id, status):
+    def set_status(self, submission_id, status, error_message=None):
+        updates = {'status': status}
+        if error_message is not None:
+            updates['error_message'] = error_message
         self.collection.update_one(
             {'_id': ObjectId(submission_id)},
-            {'$set': {'status': status}}
+            {'$set': updates}
         )
 
     def set_progress(self, submission_id, progress, step=''):
@@ -138,6 +145,7 @@ class SubmissionModel:
             'status': doc.get('status', 'pending'),
             'progress': doc.get('progress', 0),
             'progress_step': doc.get('progress_step', ''),
+            'error_message': doc.get('error_message', ''),
             'submitted_at': doc['submitted_at'].isoformat() if doc.get('submitted_at') else '',
             'evaluated_at': doc['evaluated_at'].isoformat() if doc.get('evaluated_at') else None,
             'manual_check': doc.get('manual_check', False),

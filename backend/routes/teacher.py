@@ -164,6 +164,38 @@ def view_submissions():
     return jsonify({'submissions': submissions}), 200
 
 
+@teacher_bp.route('/submission/<submission_id>', methods=['GET'])
+@jwt_required()
+def get_submission(submission_id):
+    user_id, err = _require_teacher()
+    if err:
+        return err
+
+    from models.assignment import AssignmentModel
+    from models.submission import SubmissionModel
+    from models.user import UserModel
+
+    db = _get_db()
+    assignment_model = AssignmentModel(db)
+    submission_model = SubmissionModel(db)
+    user_model = UserModel(db)
+
+    submission = submission_model.get_by_id(submission_id)
+    if not submission:
+        return jsonify({'error': 'Submission not found'}), 404
+
+    assignment = assignment_model.get_by_id(submission['assignment_id'])
+    if not assignment or assignment['teacher_id'] != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    student = user_model.get_by_id(submission['student_id'])
+    submission['student_name'] = student['name'] if student else 'Unknown'
+    submission['assignment_title'] = assignment['title']
+    submission['total_marks'] = assignment['total_marks']
+
+    return jsonify({'submission': submission, 'assignment': assignment}), 200
+
+
 @teacher_bp.route('/reports', methods=['GET'])
 @jwt_required()
 def reports():

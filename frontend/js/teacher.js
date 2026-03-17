@@ -146,10 +146,13 @@ async function loadTeacherDashboard() {
                     ${isProcessing ? `
                     <div class="eval-progress mt-1">
                         <div class="progress" style="height:14px">
-                            <div class="progress-bar" style="width:${s.progress || 0}%" style="font-size:0.65rem">${s.progress || 0}%</div>
+                            <div class="progress-bar" style="width:${s.progress || 0}%;font-size:0.65rem">${s.progress || 0}%</div>
                         </div>
                         <div class="progress-step" style="font-size:0.7rem">${escapeHtml(s.progress_step) || ''}</div>
                     </div>` : ''}
+                    ${s.status === 'error' && s.error_message ? `
+                    <div class="progress-step text-danger mt-1" style="font-size:0.7rem">${escapeHtml(s.error_message)}</div>
+                    ` : ''}
                 </td>
                 <td>${s.status === 'evaluated' ? (s.similarity_score * 100).toFixed(1) + '%' : '-'}</td>
                 <td>${s.status === 'evaluated' ? s.marks_obtained + '/' + s.total_marks : '-'}</td>
@@ -380,6 +383,7 @@ function renderSubmissionsTable(assignmentId, submissions) {
                             <td><strong>${escapeHtml(s.student_name)}</strong></td>
                             <td>
                                 <span class="badge-status badge-${s.status}">${s.status.toUpperCase()}</span>
+                                ${s.status === 'error' && s.error_message ? `<div class="small text-danger mt-1">${escapeHtml(s.error_message)}</div>` : ''}
                             </td>
                             <td>${s.status === 'evaluated' ? (s.similarity_score * 100).toFixed(1) + '%' : '-'}</td>
                             <td>${s.status === 'evaluated' ? s.marks_obtained + '/' + s.total_marks : '-'}</td>
@@ -419,21 +423,9 @@ async function setupEditMarksPage() {
     const aiSimTotal = document.getElementById('ai-sim-total');
 
     try {
-        const subData = await apiRequest(`/teacher/submissions`);
-        const submission = subData.submissions.find(s => s.id === submissionId);
-        
-        if (!submission) {
-            showToast('Submission not found', 'error');
-            return;
-        }
-
-        const assignData = await apiRequest(`/teacher/assignments`);
-        const assignment = assignData.assignments.find(a => a.id === submission.assignment_id);
-
-        if (!assignment) {
-            showToast('Assignment not found', 'error');
-            return;
-        }
+        const data = await apiRequest(`/teacher/submission/${submissionId}`);
+        const submission = data.submission;
+        const assignment = data.assignment;
 
         studentInfo.textContent = `Student: ${submission.student_name} | Assignment: ${assignment.title}`;
         subStatus.textContent = submission.status.toUpperCase();

@@ -124,6 +124,8 @@ FLASK_DEBUG=0
 MAX_CONTENT_LENGTH=8388608
 MAX_CONCURRENT_EVALUATIONS=1
 MAX_PDF_PAGES=10
+MAX_EXTRACTED_CHARS=20000
+OLLAMA_ENABLED=0
 NGROK_AUTH_TOKEN={NGROK_TOKEN}
 """
 
@@ -210,13 +212,14 @@ for attempt in range(15):
 
 # Create ngrok tunnel
 public_url = ngrok.connect(5000, "http")
+tunnel_url = public_url.public_url
 
 print()
 print("=" * 60)
 print("  🎉 APPLICATION IS LIVE!")
 print("=" * 60)
-print(f"\n  🌐 Public URL: {public_url}")
-print(f"  📊 Health:     {public_url}/api/health")
+print(f"\n  🌐 Public URL: {tunnel_url}")
+print(f"  📊 Health:     {tunnel_url}/api/health")
 print(f"\n  📋 Login Credentials:")
 print(f"     Admin:   admin@system.com / admin123")
 print(f"\n  ⚠️ Keep this notebook running to maintain the server.")

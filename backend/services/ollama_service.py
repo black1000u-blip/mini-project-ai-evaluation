@@ -3,6 +3,8 @@ import re
 import os
 import logging
 
+from config import Config
+
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL_NAME = "llama3.2"
 
@@ -60,6 +62,9 @@ def generate_rag_evaluation(student_answer, model_answer, question_text=""):
     """
     Uses Ollama with RAG context to evaluate student answers more intelligently.
     """
+    if not Config.OLLAMA_ENABLED:
+        return None
+
     context = get_rag_context()
     
     prompt = f"""
@@ -104,7 +109,7 @@ You are an expert academic evaluator. You are provided with:
                 "stream": False,
                 "format": "json"
             },
-            timeout=40
+            timeout=8
         )
         
         if response.status_code == 200:

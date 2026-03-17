@@ -511,7 +511,7 @@ async function loadResults() {
                     <div class="progress-step">${escapeHtml(r.progress_step) || 'Starting evaluation...'}</div>
                 </div>
                 ` : `
-                <p class="text-muted">${r.status === 'error' ? 'Evaluation encountered an error.' : 'Waiting to start evaluation...'}</p>
+                <p class="text-muted">${r.status === 'error' ? escapeHtml(r.error_message || 'Evaluation encountered an error.') : 'Waiting to start evaluation...'}</p>
                 `}
                 ${r.status === 'error' || r.status === 'pending' ? `
                 <button class="btn btn-sm btn-outline-primary mt-2" onclick="retryEvaluation('${r.id}')">Retry Evaluation</button>

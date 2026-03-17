@@ -102,11 +102,7 @@ ngrok.set_auth_token(NGROK_AUTH_TOKEN)
 try:
     # Open tunnel
     public_url = ngrok.connect(FLASK_PORT, "http")
-    tunnel_url = str(public_url)
-
-    # Clean URL (remove quotes if present)
-    if '"' in tunnel_url:
-        tunnel_url = tunnel_url.strip('"').split('"')[0]
+    tunnel_url = public_url.public_url
 
     print("\n" + "=" * 60)
     print("  🎉 APPLICATION IS LIVE!")

@@ -7,6 +7,7 @@ Optimized for Render free tier (512MB RAM):
 """
 
 import gc
+import logging
 import os
 import uuid
 import threading
@@ -91,7 +92,6 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                     from services.image_processing import preprocess_image
                     from services.ocr_service import extract_text, extract_text_from_file
                     from services.nlp_preprocessing import preprocess_text
-                    from services.evaluation_engine import evaluate_answer
                     from services.marks_calculator import calculate_marks
                     from services.feedback_generator import generate_feedback
                     from services.nlp_preprocessing import segment_student_answers
@@ -121,8 +121,8 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                     # Clean OCR garbage text
                     raw_text = clean_ocr_text(raw_text)
 
-                    # Only run OCR for images or PDF
-                    if not raw_text and ext in ["pdf", "png", "jpg", "jpeg"]:
+                    # Only run image preprocessing fallback for actual images.
+                    if not raw_text and ext in ["png", "jpg", "jpeg"]:
 
                         print("[EVAL] Direct extraction failed. Running OCR fallback")
 
@@ -138,6 +138,14 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                         del processed_image
                         gc.collect()
 
+                    if raw_text:
+                        raw_text = raw_text[:Config.MAX_EXTRACTED_CHARS]
+                    else:
+                        raise ValueError(
+                            "No readable text could be extracted from the submitted file. "
+                            "Please upload a text-based PDF, DOCX, TXT, or a clearer image."
+                        )
+
                     _progress(60, 'Text extracted')
                     _log(f"Text extracted: {len(raw_text)} chars")
 
@@ -147,7 +155,10 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
 
                     _progress(65, 'Analyzing and scoring each question...')
 
-                    questions = assignment.get('questions', [])
+                    questions = assignment.get('questions', [])[:25]
+
+                    if not questions:
+                        raise ValueError("Assignment has no questions configured for evaluation.")
 
                     student_segments = segment_student_answers(raw_text, questions)
 
@@ -230,7 +241,7 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                                     if isinstance(rag_missing, list):
                                         missing = list(set(missing + rag_missing))
                         except Exception as e:
-                            print(f"[EVAL] RAG refinement error: {e}")
+                            logging.warning("[EVAL] RAG refinement skipped: %s", e)
 
                         keyword_percent = round(keyword_overlap * 100, 1)
 
@@ -326,7 +337,9 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                     _log(f"CRITICAL ERROR: {e}\n{err_msg}")
                     print(f"[EVAL ERROR] Submission {submission_id}: {e}")
                     
-                    submission_model.set_status(submission_id, 'error')
+                    user_message = str(e).strip() or "Evaluation failed"
+                    submission_model.set_progress(submission_id, 100, 'Evaluation failed')
+                    submission_model.set_status(submission_id, 'error', error_message=user_message)
 
                 finally:
                     gc.collect()
@@ -398,7 +411,8 @@ def submit_answer():
     from models.submission import SubmissionModel
     submission_model = SubmissionModel(_get_db())
     submission = submission_model.create(user_id, assignment_id, file_path, ext)
-    submission_model.set_status(submission['id'], 'processing')
+    submission_model.set_status(submission['id'], 'processing', error_message='')
+    submission_model.set_progress(submission['id'], 1, 'Queued for evaluation...')
 
     # Run evaluation pipeline in a background thread so the request returns immediately
     app = current_app._get_current_object()
@@ -439,7 +453,8 @@ def retry_evaluation(submission_id):
     if not assignment:
         return jsonify({'error': 'Assignment not found'}), 404
 
-    submission_model.set_status(submission_id, 'processing')
+    submission_model.set_status(submission_id, 'processing', error_message='')
+    submission_model.set_progress(submission_id, 1, 'Queued for re-evaluation...')
 
     app = current_app._get_current_object()
     _run_evaluation_async(

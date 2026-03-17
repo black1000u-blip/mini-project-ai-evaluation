@@ -31,6 +31,10 @@ class Config:
     # Memory limits for Render free tier (512MB)
     MAX_CONCURRENT_EVALUATIONS = int(os.getenv('MAX_CONCURRENT_EVALUATIONS', 1))
     MAX_PDF_PAGES = int(os.getenv('MAX_PDF_PAGES', 10))  # Limit pages per PDF
+    MAX_EXTRACTED_CHARS = int(os.getenv('MAX_EXTRACTED_CHARS', 20000))
+
+    # Optional integrations
+    OLLAMA_ENABLED = os.getenv('OLLAMA_ENABLED', '0') == '1'
     
     # Production settings
     IS_PRODUCTION = os.getenv('RENDER', '') == 'true' or os.getenv('FLASK_DEBUG', '0') == '0'
@@ -42,3 +46,4 @@ class Config:
         logging.info(f"[CONFIG] Production: {cls.IS_PRODUCTION}")
         logging.info(f"[CONFIG] Max upload: {cls.MAX_CONTENT_LENGTH / 1024 / 1024:.1f}MB")
         logging.info(f"[CONFIG] Max concurrent evals: {cls.MAX_CONCURRENT_EVALUATIONS}")
+        logging.info(f"[CONFIG] Ollama enabled: {cls.OLLAMA_ENABLED}")

@@ -1,14 +1,12 @@
-"""Text Extraction Module — optimized for low-memory environments (Render free tier).
+"""Text Extraction Module optimized for low-memory environments.
 
 Strategy:
-- PDFs: Use PyMuPDF direct text extraction (works great for digital/typed PDFs)
-- Images: Basic preprocessing + PyMuPDF OCR (lightweight, no heavy ML models)
-- DOCX: Use python-docx for .docx files
+- PDFs: Use PyMuPDF direct text extraction; optionally fall back to OCR worker
+- Images: Lightweight image loading + optional OCR worker
+- DOCX: Use python-docx
 - TXT: Direct file read
-- Fallback: Return empty string with warning (graceful degradation)
 
-Note: For scanned/handwritten documents, accuracy is limited without heavy OCR.
-This is a deliberate trade-off for Render's 512MB RAM limit.
+The module avoids heavy in-process OCR dependencies to keep Colab/Render stable.
 """
 
 import gc
@@ -18,7 +16,6 @@ import sys
 import subprocess
 import logging
 
-import cv2
 import numpy as np
 from PIL import Image
 
@@ -62,7 +59,10 @@ def extract_text(image):
         if len(image.shape) == 2:
             pil_img = Image.fromarray(image)
         else:
-            pil_img = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+            if image.shape[2] == 4:
+                pil_img = Image.fromarray(image[:, :, :3], mode="RGB")
+            else:
+                pil_img = Image.fromarray(image[:, :, :3], mode="RGB")
         
         # Resize large images to save memory
         max_dim = 1200
@@ -71,7 +71,7 @@ def extract_text(image):
             new_size = (int(pil_img.size[0] * ratio), int(pil_img.size[1] * ratio))
             pil_img = pil_img.resize(new_size, Image.Resampling.LANCZOS)
         
-        # Convert to PDF page using PyMuPDF for text extraction
+        # Convert the image into an in-memory PDF page and try direct text extraction.
         img_bytes = pil_img.tobytes("raw", "RGB")
         img_doc = fitz.open()
         img_page = img_doc.new_page(width=pil_img.size[0], height=pil_img.size[1])
@@ -196,7 +196,12 @@ def _extract_pdf_text(pdf_path):
                 f"[TEXT] Truncated: processed {max_pages}/{total_pages} pages (limit: MAX_PDF_PAGES)"
             )
 
-        return "\n\n".join(all_text).strip()
+        combined = "\n\n".join(all_text).strip()
+        if combined:
+            return combined
+
+        logging.warning("[TEXT] PDF had no directly extractable text, trying OCR worker fallback")
+        return _extract_with_worker(pdf_path)
 
     except Exception as e:
         logging.error(f"[TEXT] PDF extraction failed: {e}")
@@ -209,6 +214,11 @@ def _extract_pdf_text(pdf_path):
 
 def _extract_image_text(image_path):
     """Extract text from an image using OCR worker subprocess."""
+    return _extract_with_worker(image_path)
+
+
+def _extract_with_worker(file_path):
+    """Use the standalone OCR worker when available."""
     worker_path = os.path.join(os.path.dirname(__file__), "ocr_worker.py")
     
     if not os.path.exists(worker_path):
@@ -220,7 +230,7 @@ def _extract_image_text(image_path):
         logging.info(f"[OCR] Running OCR worker with: {' '.join(python_cmd)}")
 
         result = subprocess.run(
-            python_cmd + [worker_path, image_path],
+            python_cmd + [worker_path, file_path],
             capture_output=True,
             text=True,
             timeout=120

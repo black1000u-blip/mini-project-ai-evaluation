@@ -41,6 +41,7 @@ def ocr_with_paddleocr(image_or_path):
 def ocr_pdf(path):
     """Extract text from a PDF using PyMuPDF + PaddleOCR fallback."""
     import fitz  # PyMuPDF
+    import numpy as np
 
     doc = fitz.open(path)
     full_text = []
@@ -52,16 +53,13 @@ def ocr_pdf(path):
         # If very little text found, try OCR
         if len(text) < 10:
             try:
-                import cv2
-                import numpy as np
-
                 pix = page.get_pixmap(dpi=200)
                 img = np.frombuffer(
                     pix.samples, dtype=np.uint8
                 ).reshape(pix.h, pix.w, pix.n)
 
                 if pix.n == 4:
-                    img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+                    img = img[:, :, :3]
 
                 text = ocr_with_paddleocr(img)
 
