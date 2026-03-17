@@ -98,7 +98,18 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
 
                     t_start = time.time()
 
-                    print(f"\n[EVAL] Starting evaluation for {submission_id} ({ext} file)")
+                    # Create a debug log file in /tmp
+                    log_file = f"/tmp/eval_{submission_id}.log"
+                    with open(log_file, "w") as f_log:
+                        f_log.write(f"Starting evaluation for {submission_id}\n")
+
+                    def _log(msg):
+                        with open(log_file, "a") as f_log:
+                            f_log.write(f"{msg}\n")
+                        print(f"[EVAL-DEBUG] {msg}")
+
+                    _log(f"Project directory: {os.getcwd()}")
+                    _log(f"File: {file_path} ({ext})")
 
                     # ------------------------------------------------
                     # STEP 1: TEXT EXTRACTION
@@ -128,14 +139,7 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                         gc.collect()
 
                     _progress(60, 'Text extracted')
-
-                    print(f"[EVAL] Text extracted: {len(raw_text)} chars in {time.time() - t_start:.1f}s")
-
-                    # ================= DEBUG PRINT =================
-                    print("\n================ STUDENT RAW TEXT ================\n")
-                    print(raw_text)
-                    print("\n=================================================\n")
-                    # =================================================
+                    _log(f"Text extracted: {len(raw_text)} chars")
 
                     # ------------------------------------------------
                     # STEP 2: SEGMENT STUDENT ANSWERS
@@ -318,9 +322,10 @@ def _run_evaluation_async(app, submission_id, file_path, ext, assignment, total_
                 except Exception as e:
 
                     import traceback
+                    err_msg = traceback.format_exc()
+                    _log(f"CRITICAL ERROR: {e}\n{err_msg}")
                     print(f"[EVAL ERROR] Submission {submission_id}: {e}")
-                    traceback.print_exc()
-
+                    
                     submission_model.set_status(submission_id, 'error')
 
                 finally:
