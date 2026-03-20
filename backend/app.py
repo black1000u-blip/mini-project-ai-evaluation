@@ -40,14 +40,15 @@ evaluation_semaphore = threading.Semaphore(Config.MAX_CONCURRENT_EVALUATIONS)
 # ---------------------------------------------------------------------------
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-logging.info("="*60)
-logging.info("  AI-Based Answer Script Evaluation System")
-logging.info("  Optimized for Render Free Tier (512MB RAM)")
-logging.info("="*60)
-
-Config.log_config()
+if os.getenv('SILENT_STARTUP') == '1':
+    logging.basicConfig(level=logging.WARNING, format='%(message)s')
+else:
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("="*60)
+    logging.info("  AI-Based Answer Script Evaluation System")
+    logging.info("  Optimized for Render Free Tier (512MB RAM)")
+    logging.info("="*60)
+    Config.log_config()
 
 app = Flask(
     __name__,
