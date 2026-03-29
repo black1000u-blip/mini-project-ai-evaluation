@@ -12,7 +12,7 @@ if os.path.exists(project_folder):
     !git reset --hard HEAD
     !git pull
 else:
-    print("📦 First time setup. Cloning repository...")
+    print("First time setup. Cloning repository...")
     !git clone -q {repo_url}
     %cd {project_folder}
 
@@ -30,20 +30,20 @@ if "response.status === 422" not in content:
                               "if (response.status === 422) { localStorage.clear(); window.location.href = '/'; } throw new Error(data.error || data.message || 'Request failed');")
 with open(auth_js, "w") as f: f.write(content)
 
-# --- 4. CONFIGURATION --- STRICTLY INSERT YOUR DATA INSIDE NGROK AND GEMINI_API_KEY
+# --- 4. CONFIGURATION ---
 with open(".env", "w") as f:
     f.writelines([
         "MONGO_URI=mongodb+srv://Dradmin:Mongo%40db%23123@cluster0.qa3itof.mongodb.net/\n",
         "MONGO_DB_NAME=NewAIEval\n",
         # Made this longer to fix the "InsecureKeyLengthWarning"
-        "JWT_SECRET_KEY=colab-stable-session-secret-key-32-chars-long-v2\n", 
+        "JWT_SECRET_KEY=colab-stable-session-secret-key-32-chars-long-v2\n",
         "JWT_ACCESS_TOKEN_EXPIRES=86400\n",
         "FLASK_DEBUG=0\n",
         "MAX_CONTENT_LENGTH=8388608\n",
         "MAX_CONCURRENT_EVALUATIONS=1\n",
         "MAX_PDF_PAGES=10\n",
-        "NGROK_AUTH_TOKEN=\n",
-        "GEMINI_API_KEY=\n"
+        "NGROK_AUTH_TOKEN=3AbFUwuUiWdVY3KG97gvOnqiR18_7S56jZJzefkv21hPXGqar\n",
+        "GEMINI_API_KEY=AIzaSyAwpECsPci4j2UEvnm1OvYtbPMbhYgSh3M\n"
     ])
 
 # --- 5. LAUNCH ---
